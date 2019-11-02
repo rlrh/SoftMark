@@ -29,7 +29,7 @@ const Header: React.FC<Props> = props => {
   const classes = useStyles();
 
   return (
-    <AppBar position="sticky" color="primary" elevation={1}>
+    <AppBar position="sticky" color="primary">
       <Container fixed maxWidth="md">
         <Toolbar className={classes.toolbar}>
           <Typography variant="h6" className={classes.title}>
