@@ -46,7 +46,7 @@ const AddMarkerModal: React.FC<Props> = ({
   });
 
   return (
-    <Dialog open={visible} onBackdropClick={toggleVisibility} fullWidth>
+    <Dialog open={visible} onClose={toggleVisibility} fullWidth>
       <DialogTitle>Add new paper</DialogTitle>
       <DialogContent>
         <SimpleForm

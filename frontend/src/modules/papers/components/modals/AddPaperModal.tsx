@@ -50,7 +50,7 @@ const AddPaperModal: React.FC<Props> = ({
   });
 
   return (
-    <Dialog open={visible} onBackdropClick={toggleVisibility} fullWidth>
+    <Dialog open={visible} onClose={toggleVisibility} fullWidth>
       <DialogContent>
         <Typography variant="h4" className={classes.dialogTitle}>
           Add new paper

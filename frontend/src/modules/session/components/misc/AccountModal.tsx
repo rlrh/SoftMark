@@ -55,7 +55,7 @@ const AccountModal: React.FC<Props> = props => {
 
   return (
     <>
-      <Dialog open={isOpen} fullWidth>
+      <Dialog open={isOpen} onClose={toggleVisibility} fullWidth>
         <DialogTitle>Account</DialogTitle>
         <DialogContent>
           <SimpleForm
