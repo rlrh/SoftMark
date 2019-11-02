@@ -45,7 +45,7 @@ const ScriptView: React.FC<Props> = ({ match: { params } }) => {
   }
 
   if (!script) {
-    return <>The script does not exist</>;
+    return <p>The script does not exist</p>;
   }
 
   return (
