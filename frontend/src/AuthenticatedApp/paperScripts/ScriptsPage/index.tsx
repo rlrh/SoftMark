@@ -47,6 +47,7 @@ const ScriptsSubpage: React.FC = () => {
     api.scripts
       .getScripts(paper.id)
       .then(resp => {
+        console.log(resp.data.scripts);
         setScripts(resp.data.scripts);
       })
       .finally(() => setIsLoadingScripts(false));
