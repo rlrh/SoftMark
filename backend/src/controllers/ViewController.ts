@@ -1,6 +1,6 @@
 import { addMinutes } from "date-fns";
 import { Request, Response } from "express";
-import _ from "lodash";
+import { chain, map, pick } from "lodash";
 import {
   Brackets,
   getRepository,
@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import { Page } from "../entities/Page";
 import { PageQuestionTemplate } from "../entities/PageQuestionTemplate";
+import { PageTemplate } from "../entities/PageTemplate";
 import { Question } from "../entities/Question";
 import QuestionTemplate from "../entities/QuestionTemplate";
 import { Script } from "../entities/Script";
@@ -16,11 +17,11 @@ import { PaperUserRole } from "../types/paperUsers";
 import { AccessTokenSignedPayload } from "../types/tokens";
 import {
   AnnotationViewData,
+  PageViewData,
   QuestionViewData,
   ScriptViewData
 } from "../types/view";
 import { allowedRequester } from "../utils/papers";
-import { generatePages } from "../utils/questionTemplate";
 
 function selectQuestionViewData<T>(queryBuilder: SelectQueryBuilder<T>) {
   return queryBuilder
@@ -39,14 +40,12 @@ function selectPageViewData<T>(
   const result = overwrite
     ? query.select("page.id", "id")
     : query.addSelect("page.id", "id");
-  return (
-    result
-      .addSelect("page.pageNo", "pageNo")
-      // .addSelect("page.imageUrl", "imageUrl")
-      .addSelect("annotation.id", "annotationId")
-      .addSelect("annotation.layer", "layer")
-      .addSelect("question.id", "questionId")
-  );
+  return result
+    .addSelect("page.pageNo", "pageNo")
+    .addSelect("page.imageUrl", "imageUrl")
+    .addSelect("annotation.id", "annotationId")
+    .addSelect("annotation.layer", "layer")
+    .addSelect("question.id", "questionId");
 }
 
 function selectScriptData<T>(
@@ -121,10 +120,52 @@ export async function viewScript(request: Request, response: Response) {
     return;
   }
 
-  const pages = await selectPageViewData(questionsQuery)
+  const pagesData: Array<{
+    id: number;
+    pageNo: number;
+    questionId: number;
+    annotationId: number | null;
+    layer: any;
+    imageUrl: string;
+  }> = await selectPageViewData(questionsQuery)
     .innerJoin("script.pages", "page", "page.discardedAt IS NULL")
     .leftJoin("page.annotations", "annotation")
     .getRawMany();
+
+  const pages = pagesData.reduce<{
+    [k: string]: PageViewData;
+  }>((c, { id, pageNo, questionId, annotationId, layer, imageUrl }) => {
+    /* New key, create new entry */
+    if (!c[id]) {
+      c[id] = {
+        id,
+        pageNo,
+        imageUrl,
+        questionIds: [questionId],
+        /* Add anotation only if it isn't empty */
+        annotations:
+          annotationId !== null && layer !== null
+            ? [{ id: annotationId, layer }]
+            : []
+      };
+    } else {
+      /* Key exists already */
+      /* Question ID is new, so add it */
+      if (!c[id].questionIds.includes(questionId))
+        c[id].questionIds.push(questionId);
+
+      /* Annotation data is new, so add it */
+      if (
+        /* Annotation not empty */
+        annotationId !== null &&
+        layer !== null &&
+        /* Annotation not already in array */
+        !c[id].annotations.includes({ id: annotationId, layer })
+      )
+        c[id].annotations.push({ id: annotationId, layer });
+    }
+    return c;
+  }, {});
 
   const data: ScriptViewData = {
     id,
@@ -132,7 +173,7 @@ export async function viewScript(request: Request, response: Response) {
     matriculationNumber,
     rootQuestionTemplate,
     questions,
-    pages
+    pages: Object.values(pages) as any
   };
   response.status(200).json(data);
 }
@@ -244,7 +285,7 @@ export async function questionToMark(request: Request, response: Response) {
   const questionsQuery = getRepository(Question)
     .createQueryBuilder("question")
     .where("question.discardedAt IS NULL")
-    .andWhere("question.scriptId = :id", { id: script.id })
+    .andWhere("question.scriptId = :id", { id })
     .andWhere("question.questionTemplateId IN (:...ids)", {
       ids: descendantQuestionTemplateIds
     })
@@ -262,18 +303,16 @@ export async function questionToMark(request: Request, response: Response) {
     .set({ currentMarker: requester, currentMarkerUpdatedAt: new Date() })
     .execute();
 
-  // TODO: Use PageQuestionTemplate to get all the pageNos instead.
-
-  const descendantPageNos = descendantQuestionTemplates
-    .filter(descendant => !!descendant.pageCovered)
-    .map(descendant => generatePages(descendant.pageCovered!));
-
-  // Merge all the pageNos
-  const pageNoSet = new Set<Number>();
-  descendantPageNos.forEach(descendant =>
-    descendant.forEach(pageNo => pageNoSet.add(pageNo))
-  );
-  const pageNos = Array.from(pageNoSet);
+  const pageNosData = await getRepository(PageTemplate)
+    .createQueryBuilder("pageTemplate")
+    .where("pageTemplate.discardedAt IS NULL")
+    .innerJoin("pageTemplate.pageQuestionTemplates", "pageQuestionTemplate")
+    .andWhere("pageQuestionTemplate.questionTemplateId IN (:...ids)", {
+      ids: descendantQuestionTemplateIds
+    })
+    .select("pageTemplate.pageNo", "pageNo")
+    .getRawMany();
+  const pageNos = pageNosData.map(pageNo => pageNo.pageNo);
 
   const pagesData = await getRepository(Page)
     .createQueryBuilder("page")
@@ -294,11 +333,11 @@ export async function questionToMark(request: Request, response: Response) {
     .getRawMany();
 
   // Array-ize annotations
-  const pagesWithAnnotations = _.chain(pagesData)
+  const pagesWithAnnotations = chain(pagesData)
     .groupBy("id")
     .map((value, index) => {
-      const annotations: AnnotationViewData[] = _.map(value, value =>
-        _.pick(value, "annotationId", "layer")
+      const annotations: AnnotationViewData[] = map(value, value =>
+        pick(value, "annotationId", "layer")
       )
         .filter(annotation => !!annotation.annotationId && !!annotation.layer)
         .map(annotation => ({
@@ -306,7 +345,7 @@ export async function questionToMark(request: Request, response: Response) {
           layer: annotation.layer
         }));
 
-      return { ..._.pick(value[0], "id", "pageNo", "imageUrl"), annotations };
+      return { ...pick(value[0], "id", "pageNo", "imageUrl"), annotations };
     })
     .value();
 
@@ -320,7 +359,7 @@ export async function questionToMark(request: Request, response: Response) {
     .addSelect("pageQuestionTemplate.questionTemplateId", "questionTemplateId")
     .getRawMany();
 
-  const questionTemplateIdsByPageNo = _.chain(pageQuestionTemplatesData)
+  const questionTemplateIdsByPageNo = chain(pageQuestionTemplatesData)
     .groupBy("pageNo")
     .mapValues(value => value.map(value => value.questionTemplateId))
     .value();
