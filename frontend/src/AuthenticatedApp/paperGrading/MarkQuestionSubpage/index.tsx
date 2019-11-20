@@ -133,7 +133,9 @@ const MarkQuestionPage: React.FC<Props> = ({ match }) => {
         <div className={classes.container}>
           <Header subtitle={`Marking Q${rootQuestionTemplate.name}`} />
           <Container maxWidth={false} className={classes.innerContainer}>
-            <Typography variant="subtitle1">No pages to display.</Typography>
+            <Typography variant="subtitle1">
+              No pages to display for this script.
+            </Typography>
           </Container>
         </div>
       );
@@ -211,10 +213,10 @@ const MarkQuestionPage: React.FC<Props> = ({ match }) => {
   return (
     <div className={classes.container}>
       <Header
-        subtitle={`Error occurred marking question template ID ${questionTemplateId}`}
+        subtitle={`No scripts to mark for question template ID ${questionTemplateId}`}
       />
       <Container maxWidth={false} className={classes.innerContainer}>
-        <Typography variant="subtitle1">An error occurred.</Typography>
+        <Typography variant="subtitle1">No scripts to mark.</Typography>
       </Container>
     </div>
   );
