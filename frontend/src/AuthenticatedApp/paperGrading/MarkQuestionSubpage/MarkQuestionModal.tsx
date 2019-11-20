@@ -45,9 +45,10 @@ const MarkQuestionModal: React.FC<Props> = ({ question, render }) => {
   };
 
   const putMarkData = async (questionId: number, score: number) => {
-    await api.marks.replaceMark(questionId, { score });
-    setActualScore(score);
-    return score;
+    const response = await api.marks.replaceMark(questionId, { score });
+    const newScore = response.data.mark.score;
+    setActualScore(newScore);
+    return newScore;
   };
 
   const handleCancel = event => {
@@ -56,7 +57,6 @@ const MarkQuestionModal: React.FC<Props> = ({ question, render }) => {
   };
 
   const handleSave = event => {
-    setActualScore(localScore); // band-aid, check putMarkData response pending problem
     putMarkData(id, localScore);
     toggleVisibility();
   };

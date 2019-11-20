@@ -54,7 +54,13 @@ export async function replace(request: Request, response: Response) {
   }
   await getRepository(Mark).save(mark);
 
-  const data = await mark.getData();
+  const data = {
+    question: mark.question,
+    questionId: mark.questionId,
+    marker: mark.marker,
+    markerId: mark.markerId,
+    score: mark.score
+  };
   response.status(200).json({ mark: data });
 }
 
