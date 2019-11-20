@@ -212,11 +212,11 @@ const MarkQuestionPage: React.FC<Props> = ({ match }) => {
 
   return (
     <div className={classes.container}>
-      <Header
-        subtitle={`No scripts to mark for question template ID ${questionTemplateId}`}
-      />
+      <Header subtitle={`No scripts to mark`} />
       <Container maxWidth={false} className={classes.innerContainer}>
-        <Typography variant="subtitle1">No scripts to mark.</Typography>
+        <Typography variant="subtitle1">
+          No scripts to mark for question template ID ${questionTemplateId}.
+        </Typography>
       </Container>
     </div>
   );
